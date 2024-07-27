@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  test:
+    strategy:
+      max-parallel: 2
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        java: [ 11, 21 ]
+    runs-on: ${{ matrix.os }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: ${{ matrix.java }}
+
+      - name: Maven
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: 3.9.8
+
+      - name: Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Package
+        run: mvn -B clean package install jacoco:report
+
+      - name: Coverage
+        uses: codecov/codecov-action@v4.5.0
+        with:
+          file: target/site/jacoco/jacoco.xml
